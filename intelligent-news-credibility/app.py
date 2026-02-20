@@ -1,6 +1,9 @@
 import streamlit as st
 import joblib
 import numpy as np
+import re
+import requests
+from bs4 import BeautifulSoup
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
@@ -9,12 +12,32 @@ st.set_page_config(
     layout="centered"
 )
 
-# ---------------- LOAD MODEL ----------------
-# @st.cache_resource
-# def load_model():
-#     return joblib.load("models/credibility.pkl")
+# ---------------- HELPER: EXTRACT TEXT FROM URL ----------------
+def extract_text(url):
+    """Fetch and extract article text from a URL."""
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "html.parser")
+    paragraphs = soup.find_all("p")
+    text = " ".join(p.get_text() for p in paragraphs)
+    return text.strip()
 
-# model = load_model()
+# ---------------- HELPER: CLEAN TEXT ----------------
+def clean_text(text):
+    """Clean input text to match training preprocessing."""
+    text = str(text).lower()
+    text = re.sub(r'http\S+|www\S+', '', text)
+    text = re.sub(r'[^a-z\s]', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+# ---------------- LOAD MODEL ----------------
+@st.cache_resource
+def load_model():
+    return joblib.load("ml/model.pkl")
+
+model = load_model()
 
 # ---------------- UI ----------------
 st.title("📰 Intelligent News Credibility Analyzer")
@@ -60,8 +83,9 @@ if st.button("Analyze Credibility"):
         st.warning("Please provide article text or URL.")
     else:
         with st.spinner("Analyzing credibility..."):
-            prediction = model.predict([article_text])[0]
-            probabilities = model.predict_proba([article_text])[0]
+            cleaned = clean_text(article_text)
+            prediction = model.predict([cleaned])[0]
+            probabilities = model.predict_proba([cleaned])[0]
             confidence = np.max(probabilities)
 
         st.divider()
