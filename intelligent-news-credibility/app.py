@@ -5,14 +5,13 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="Intelligent News Credibility Analyzer",
     page_icon="📰",
     layout="centered"
 )
 
-# ---------------- HELPER: EXTRACT TEXT FROM URL ----------------
+# extract text from url
 def extract_text(url):
     """Fetch and extract article text from a URL."""
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -23,23 +22,20 @@ def extract_text(url):
     text = " ".join(p.get_text() for p in paragraphs)
     return text.strip()
 
-# ---------------- HELPER: CLEAN TEXT ----------------
-def clean_text(text):
-    """Clean input text to match training preprocessing."""
-    text = str(text).lower()
-    text = re.sub(r'http\S+|www\S+', '', text)
-    text = re.sub(r'[^a-z\s]', '', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
 
-# ---------------- LOAD MODEL ----------------
+
+
+# loading the model and vectorizer . 
 @st.cache_resource
 def load_model():
-    return joblib.load("ml/model.pkl")
+    model = joblib.load("ml/model.pkl")
+    vectorizer = joblib.load("ml/vectorizer.pkl")
+    return model, vectorizer
 
-model = load_model()
+model , vectorizer = load_model()
 
-# ---------------- UI ----------------
+
+# making the ui of the app . 
 st.title("📰 Intelligent News Credibility Analyzer")
 st.caption("ML-based News Credibility Analysis (No LLMs)")
 
@@ -50,7 +46,7 @@ to assess **credibility risk** based on textual patterns.
 """
 )
 
-# ---------------- INPUT ----------------
+# taking input from the user .
 input_type = st.radio(
     "Choose input method:",
     ["Paste Article Text", "Enter Article URL"]
@@ -77,31 +73,33 @@ else:
                 except Exception as e:
                     st.error("Failed to extract article")
 
-# ---------------- ANALYSIS ----------------
+# anahlyzing the credibility of the article .
 if st.button("Analyze Credibility"):
     if not article_text.strip():
         st.warning("Please provide article text or URL.")
     else:
         with st.spinner("Analyzing credibility..."):
-            cleaned = clean_text(article_text)
-            prediction = model.predict([cleaned])[0]
-            probabilities = model.predict_proba([cleaned])[0]
+            
+            transformed = vectorizer.transform([article_text])
+            prediction = model.predict(transformed)[0]
+            probabilities = model.predict_proba(transformed)[0]
+
             confidence = np.max(probabilities)
 
         st.divider()
 
-        # -------- RESULT --------
+        # Result 
         if prediction == 1:
-            st.error("⚠️ Low Credibility Detected")
-        else:
             st.success("✅ High Credibility Detected")
+        else:
+            st.error("⚠️ Low Credibility Detected")
 
         st.metric(
             label="Confidence Score",
             value=f"{confidence:.2f}"
         )
 
-        # -------- EXPLANATION --------
+        # Explanation 
         with st.expander("📊 How was this decision made?"):
             st.write(
                 """
