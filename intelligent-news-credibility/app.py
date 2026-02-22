@@ -4,7 +4,7 @@ import numpy as np
 import re
 import requests
 from bs4 import BeautifulSoup
-
+import os
 st.set_page_config(
     page_title="Intelligent News Credibility Analyzer",
     page_icon="📰",
@@ -28,8 +28,12 @@ def extract_text(url):
 # loading the model and vectorizer . 
 @st.cache_resource
 def load_model():
-    model = joblib.load("ml/model.pkl")
-    vectorizer = joblib.load("ml/vectorizer.pkl")
+    base_dir = os.path.dirname(__file__)  # folder where app.py is
+    model_path = os.path.join(base_dir, "ml", "model.pkl")
+    vectorizer_path = os.path.join(base_dir, "ml", "vectorizer.pkl")
+
+    model = joblib.load(model_path)
+    vectorizer = joblib.load(vectorizer_path)
     return model, vectorizer
 
 model , vectorizer = load_model()
