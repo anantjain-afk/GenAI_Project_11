@@ -52,6 +52,10 @@ input_type = st.radio(
     ["Paste Article Text", "Enter Article URL"]
 )
 
+# Initialize session state for article text
+if "article_text" not in st.session_state:
+    st.session_state.article_text = ""
+
 article_text = ""
 
 if input_type == "Paste Article Text":
@@ -60,6 +64,7 @@ if input_type == "Paste Article Text":
         height=250,
         placeholder="Paste the full article content..."
     )
+    st.session_state.article_text = article_text
 
 else:
     url = st.text_input("Enter news article URL")
@@ -67,14 +72,19 @@ else:
         if url.strip():
             with st.spinner("Extracting article..."):
                 try:
-                    article_text = extract_text(url)
+                    st.session_state.article_text = extract_text(url)
                     st.success("Article extracted successfully!")
-                    st.text_area("Extracted Article", article_text, height=250)
+                    st.text_area("Extracted Article", st.session_state.article_text, height=250)
                 except Exception as e:
                     st.error("Failed to extract article")
+                    st.session_state.article_text = ""
+    
+    # Use the stored article text
+    article_text = st.session_state.article_text
 
 # anahlyzing the credibility of the article .
 if st.button("Analyze Credibility"):
+
     if not article_text.strip():
         st.warning("Please provide article text or URL.")
     else:
